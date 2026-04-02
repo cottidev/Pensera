@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pensera</title>
+    <meta
+      name="description"
+      content="Pensera is a simple web journaling app with groups, autosaved entries, and a clean writing space."
+    />
+    <meta name="theme-color" content="#f3f0e8" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Pensera" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon-192.png" type="image/png" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Crimson+Text:wght@400;600&family=DM+Sans:wght@400;500;700&family=EB+Garamond:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=Libre+Baskerville:wght@400;700&family=Manrope:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-top">
+          <div class="brand-lockup">
+            <img class="brand-logo" src="logo-mark.png" alt="Pensera logo" />
+            <div>
+              <p class="app-kicker">Pensera</p>
+              <h1>Journal</h1>
+            </div>
+            <button
+              class="help-button"
+              type="button"
+              aria-label="How to use Pensera"
+            >
+              ?
+              <span class="help-tooltip" role="tooltip">
+                <span class="help-tooltip-title">Quick Guide</span>
+                <span class="help-tooltip-item"
+                  >Create entries with New Entry</span
+                >
+                <span class="help-tooltip-item"
+                  >Click a group to filter entries</span
+                >
+                <span class="help-tooltip-item"
+                  >Use + to move an entry into a group</span
+                >
+                <span class="help-tooltip-item"
+                  >Your writing saves automatically</span
+                >
+                <span class="help-tooltip-item"
+                  >Shortcuts: Ctrl/Cmd + N for new, Ctrl/Cmd + Shift + D to
+                  duplicate</span
+                >
+                <span class="help-tooltip-item"
+                  >Select text, then right-click to change its color or
+                  highlight</span
+                >
+              </span>
+            </button>
+          </div>
+          <button class="primary-button" type="button" data-new-entry>
+            New Entry
+          </button>
+        </div>
+
+        <div class="search-wrap">
+          <span class="search-icon" aria-hidden="true"></span>
+          <input
+            class="search-input"
+            type="search"
+            placeholder="Search entries"
+            data-search
+          />
+        </div>
+
+        <section class="group-panel">
+          <div class="section-header">
+            <span>Groups</span>
+            <div class="section-actions">
+              <button class="small-button" type="button" data-open-group-form>
+                New
+              </button>
+              <button
+                class="small-button ghost-button"
+                type="button"
+                data-import-json
+              >
+                Import
+              </button>
+              <button
+                class="small-button ghost-button"
+                type="button"
+                data-export-json
+              >
+                Export
+              </button>
+            </div>
+          </div>
+
+          <form class="group-form is-hidden" data-group-form>
+            <input
+              class="group-input"
+              type="text"
+              placeholder="Group name"
+              maxlength="18"
+              data-group-input
+            />
+            <div class="group-form-actions">
+              <button class="small-button" type="submit" data-group-submit>
+                Create
+              </button>
+              <button
+                class="small-button ghost-button"
+                type="button"
+                data-cancel-group
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+
+          <div class="group-help">
+            Click a group to see only its entries. Click <strong>+</strong> to
+            choose an entry to move into that group.
+          </div>
+
+          <div class="group-list" data-group-list></div>
+        </section>
+
+        <section class="entry-panel">
+          <div class="section-header">
+            <span>Entries</span>
+            <div class="section-actions">
+              <div class="entry-sort-dropdown" data-entry-sort-dropdown>
+                <button
+                  class="entry-sort-trigger"
+                  type="button"
+                  data-entry-sort-trigger
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-label="Sort entries"
+                >
+                  <span data-entry-sort-label>Latest</span>
+                </button>
+                <div
+                  class="entry-sort-menu is-hidden"
+                  data-entry-sort-menu
+                  role="listbox"
+                  aria-label="Sort entries"
+                >
+                  <button
+                    class="entry-sort-option"
+                    type="button"
+                    data-entry-sort-option="recent"
+                    role="option"
+                  >
+                    Latest
+                  </button>
+                  <button
+                    class="entry-sort-option"
+                    type="button"
+                    data-entry-sort-option="oldest"
+                    role="option"
+                  >
+                    Oldest
+                  </button>
+                  <button
+                    class="entry-sort-option"
+                    type="button"
+                    data-entry-sort-option="title"
+                    role="option"
+                  >
+                    Title
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="entry-list" data-entry-list></div>
+        </section>
+      </aside>
+
+      <input type="file" accept="application/json" data-import-file hidden />
+
+      <main class="editor-panel">
+        <header class="editor-topbar">
+          <div class="editor-meta">
+            <span class="editor-group-label is-hidden" data-active-group></span>
+            <span data-entry-date>Today</span>
+            <span data-save-status>Saved</span>
+          </div>
+          <div class="editor-topbar-actions">
+            <span class="editor-current-time" data-current-time>00:00</span>
+            <button
+              class="focus-toggle-button duplicate-entry-button"
+              type="button"
+              data-duplicate-entry
+              aria-label="Duplicate entry"
+              title="Duplicate entry"
+            >
+              Duplicate
+            </button>
+            <button
+              class="focus-toggle-button"
+              type="button"
+              data-focus-toggle
+              aria-pressed="false"
+              aria-label="Enter focus mode"
+            >
+              Focus
+            </button>
+            <button
+              class="theme-toggle-button"
+              type="button"
+              data-theme-toggle
+              aria-pressed="false"
+              aria-label="Switch to dark mode"
+            >
+              <span class="theme-toggle-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+        </header>
+        <section class="page">
+          <input
+            class="title-input"
+            type="text"
+            placeholder="Untitled entry"
+            data-title
+          />
+
+          <div
+            class="editor"
+            contenteditable="true"
+            spellcheck="true"
+            data-editor
+            aria-label="Journal editor"
+          ></div>
+
+          <div class="editor-stats">
+            <div class="statusbar-tools">
+              <select
+                id="font-family"
+                class="status-select"
+                data-font-select
+                aria-label="Choose editor font"
+              >
+                <option value="inter">Inter</option>
+                <option value="dm-sans">DM Sans</option>
+                <option value="manrope">Manrope</option>
+                <option value="space-grotesk">Space Grotesk</option>
+                <option value="serif">Instrument Serif</option>
+                <option value="crimson">Crimson Text</option>
+                <option value="baskerville">Libre Baskerville</option>
+                <option value="eb-garamond">EB Garamond</option>
+                <option value="cormorant">Cormorant Garamond</option>
+              </select>
+              <select
+                id="font-size"
+                class="status-select status-select-small"
+                data-font-size-select
+                aria-label="Choose font size"
+              >
+                <option value="16px">16</option>
+                <option value="18px">18</option>
+                <option value="20px">20</option>
+                <option value="22px">22</option>
+                <option value="24px">24</option>
+                <option value="26px">26</option>
+                <option value="28px">28</option>
+                <option value="30px">30</option>
+              </select>
+              <button
+                class="icon-button status-icon-button"
+                type="button"
+                data-command="bold"
+                aria-label="Bold"
+              >
+                B
+              </button>
+              <button
+                class="icon-button status-icon-button"
+                type="button"
+                data-command="italic"
+                aria-label="Italic"
+              >
+                I
+              </button>
+              <button
+                class="icon-button status-icon-button status-text-button"
+                type="button"
+                data-clear-highlight-toolbar
+                aria-label="Remove highlight"
+                title="Remove highlight"
+              >
+                Clear-Highlight
+              </button>
+              <button
+                class="icon-button status-icon-button status-text-button"
+                type="button"
+                data-export-pdf-toolbar
+                aria-label="Download entry as PDF"
+                title="Download entry as PDF"
+              >
+                Export PDF
+              </button>
+            </div>
+            <div class="statusbar-counts">
+              <span><strong data-line-count>0</strong> lines</span>
+              <span><strong data-word-count>0</strong> words</span>
+              <span><strong data-character-count>0</strong> characters</span>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal is-hidden" data-entry-picker>
+      <div class="modal-backdrop" data-close-picker></div>
+      <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="picker-title"
+      >
+        <div class="modal-header">
+          <h2 id="picker-title">Add Entry To Group</h2>
+          <button class="icon-button" type="button" data-close-picker>
+            Close
+          </button>
+        </div>
+        <div class="picker-list" data-picker-list></div>
+      </div>
+    </div>
+
+    <div class="modal is-hidden" data-confirm-modal>
+      <div class="modal-backdrop" data-close-confirm></div>
+      <div
+        class="modal-card modal-card-small"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+      >
+        <div class="modal-header">
+          <h2 id="confirm-title">Delete</h2>
+          <button
+            class="icon-button"
+            type="button"
+            data-close-confirm
+            aria-label="Close confirmation"
+          >
+            x
+          </button>
+        </div>
+        <p class="confirm-text" data-confirm-text></p>
+        <div class="confirm-actions">
+          <button
+            class="small-button ghost-button"
+            type="button"
+            data-close-confirm
+          >
+            Cancel
+          </button>
+          <button
+            class="small-button danger-fill-button"
+            type="button"
+            data-confirm-accept
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="editor-context-menu is-hidden" data-editor-context-menu>
+      <div class="editor-context-title">Highlight</div>
+      <div class="editor-context-swatches">
+        <button
+          class="editor-context-color"
+          type="button"
+          data-highlight-color="#fff29a"
+          aria-label="Yellow highlight"
+          title="Yellow"
+        ></button>
+        <button
+          class="editor-context-color"
+          type="button"
+          data-highlight-color="#c7f1c9"
+          aria-label="Green highlight"
+          title="Green"
+        ></button>
+        <button
+          class="editor-context-color"
+          type="button"
+          data-highlight-color="#bfe3ff"
+          aria-label="Blue highlight"
+          title="Blue"
+        ></button>
+        <button
+          class="editor-context-color"
+          type="button"
+          data-highlight-color="#ffd6ea"
+          aria-label="Pink highlight"
+          title="Pink"
+        ></button>
+        <button
+          class="editor-context-color editor-context-color-clear"
+          type="button"
+          data-clear-highlight
+          aria-label="Remove highlight"
+          title="Remove highlight"
+        ></button>
+      </div>
+      <div class="editor-context-title editor-context-title-secondary">
+        Text Color
+      </div>
+      <div class="editor-context-swatches">
+        <button
+          class="editor-context-color editor-context-color-clear"
+          type="button"
+          data-clear-text-color
+          aria-label="Remove text color"
+          title="Remove text color"
+        ></button>
+        <button
+          class="editor-context-color editor-context-color-text"
+          type="button"
+          data-text-color="#b84c4c"
+          aria-label="Red text"
+          title="Red"
+        ></button>
+        <button
+          class="editor-context-color editor-context-color-text"
+          type="button"
+          data-text-color="#2d6a4f"
+          aria-label="Green text"
+          title="Green"
+        ></button>
+        <button
+          class="editor-context-color editor-context-color-text"
+          type="button"
+          data-text-color="#2f6fed"
+          aria-label="Blue text"
+          title="Blue"
+        ></button>
+      </div>
+    </div>
+
+    <template id="entry-item-template">
+      <div class="entry-item">
+        <div class="entry-item-top">
+          <span class="entry-item-title"></span>
+          <div class="entry-item-actions">
+            <button
+              class="entry-pin-button icon-only-button"
+              type="button"
+              aria-label="Pin entry"
+              title="Pin entry"
+            >
+              <i class="fa-solid fa-thumbtack" aria-hidden="true"></i>
+            </button>
+            <button
+              class="entry-export-button icon-only-button"
+              type="button"
+              aria-label="Export entry"
+            >
+              <i class="ui-icon ui-icon-download" aria-hidden="true"></i>
+            </button>
+            <button
+              class="entry-delete-button icon-only-button"
+              type="button"
+              aria-label="Delete entry"
+            >
+              <i class="ui-icon ui-icon-trash" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+        <button class="entry-open-button" type="button">
+          <div class="entry-item-meta">
+            <span class="entry-item-group"></span>
+            <span class="entry-item-date"></span>
+          </div>
+        </button>
+      </div>
+    </template>
+
+    <template id="group-item-template">
+      <div class="group-row">
+        <button class="group-item" type="button">
+          <span class="group-name"></span>
+          <span class="group-count"></span>
+        </button>
+        <div class="group-actions">
+          <button
+            class="group-pin-button icon-only-button"
+            type="button"
+            aria-label="Pin group"
+            title="Pin group"
+          >
+            <i class="fa-solid fa-thumbtack" aria-hidden="true"></i>
+          </button>
+          <button
+            class="group-add-button icon-only-button"
+            type="button"
+            aria-label="Choose entry for group"
+          >
+            <i class="ui-icon ui-icon-plus" aria-hidden="true"></i>
+          </button>
+          <div class="group-menu-wrap">
+            <button
+              class="group-menu-button icon-only-button"
+              type="button"
+              aria-label="More group actions"
+              aria-expanded="false"
+              title="More"
+            >
+              <i class="ui-icon ui-icon-flyout" aria-hidden="true"></i>
+            </button>
+          </div>
+          <button
+            class="group-delete-button icon-only-button"
+            type="button"
+            aria-label="Delete group"
+          >
+            <i class="ui-icon ui-icon-trash" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+    </template>
+
+    <template id="picker-entry-template">
+      <div class="picker-entry-row">
+        <div class="picker-entry">
+          <div class="picker-entry-top">
+            <button class="picker-entry-main" type="button">
+              <span class="picker-entry-title"></span>
+            </button>
+            <button
+              class="picker-entry-action is-hidden"
+              type="button"
+              aria-label="Remove entry from group"
+              title="Remove entry from group"
+            >
+              Remove
+            </button>
+          </div>
+          <span class="picker-entry-meta">
+            <span class="picker-entry-date"></span>
+            <span class="picker-entry-words"></span>
+          </span>
+        </div>
+      </div>
+    </template>
+
+    <div class="group-flyout is-hidden" data-group-flyout>
+      <div class="group-flyout-title" data-group-flyout-title></div>
+      <button
+        class="group-flyout-action"
+        type="button"
+        data-group-flyout-action="edit"
+      >
+        Rename group
+      </button>
+      <button
+        class="group-flyout-action"
+        type="button"
+        data-group-flyout-action="export"
+      >
+        Export group
+      </button>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
