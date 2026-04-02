@@ -21,6 +21,9 @@
   --glow: rgba(45, 108, 223, 0.04);
   --editor-font: "Inter", sans-serif;
   --editor-size: 18px;
+  --editor-line-height: 1.82;
+  --page-width: 860px;
+  --sidebar-width: 320px;
 }
 
 :root[data-theme="dark"] {
@@ -62,6 +65,11 @@ body {
   background: var(--bg);
 }
 
+body.is-resizing-sidebar {
+  cursor: col-resize;
+  user-select: none;
+}
+
 button,
 input,
 select,
@@ -71,7 +79,7 @@ div[contenteditable="true"] {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width) 10px minmax(0, 1fr);
   min-height: 100vh;
   transition: grid-template-columns 180ms ease;
 }
@@ -90,6 +98,46 @@ div[contenteditable="true"] {
     opacity 160ms ease,
     transform 180ms ease,
     border-color 180ms ease;
+}
+
+.sidebar-resizer {
+  position: relative;
+  width: 10px;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--paper) 44%, transparent),
+      transparent
+    );
+  cursor: col-resize;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.sidebar-resizer::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: 44px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 24%, transparent);
+  transform: translate(-50%, -50%);
+}
+
+.sidebar-resizer:hover,
+.sidebar-resizer:focus-visible,
+body.is-resizing-sidebar .sidebar-resizer {
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent);
+  outline: none;
 }
 
 .sidebar-top {
@@ -1362,7 +1410,7 @@ div[contenteditable="true"] {
 }
 
 .page {
-  width: min(860px, calc(100% - 32px));
+  width: min(var(--page-width), calc(100% - 32px));
   margin: 24px auto 32px;
   padding: 36px 44px 40px;
   border: 1px solid var(--line);
@@ -1370,6 +1418,11 @@ div[contenteditable="true"] {
   background: var(--paper);
   box-shadow: none;
   position: relative;
+  transition:
+    width 180ms ease,
+    padding 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .title-input {
@@ -1386,13 +1439,63 @@ div[contenteditable="true"] {
   letter-spacing: -0.02em;
 }
 
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 22px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 14px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--paper) 94%, transparent),
+      color-mix(in srgb, var(--panel) 68%, var(--paper))
+    );
+}
+
+.editor-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.editor-toolbar-help {
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+.editor-image-tools.is-hidden {
+  display: none;
+}
+
+.editor-image-size-label {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.editor-image-size {
+  width: 112px;
+  accent-color: var(--accent);
+}
+
 .editor {
   min-height: 60vh;
   outline: none;
   color: var(--text);
   font-family: var(--editor-font);
   font-size: var(--editor-size);
-  line-height: 1.82;
+  line-height: var(--editor-line-height);
+  caret-color: var(--accent);
+  transition:
+    line-height 180ms ease,
+    font-size 180ms ease;
 }
 
 .editor:empty::before {
@@ -1402,6 +1505,33 @@ div[contenteditable="true"] {
 
 .editor p {
   margin: 0 0 1em;
+}
+
+.editor h1,
+.editor h2,
+.editor h3 {
+  margin: 1.4em 0 0.55em;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+}
+
+.editor h1 {
+  font-family: "Instrument Serif", serif;
+  font-size: clamp(2rem, 3vw, 2.6rem);
+  font-weight: 400;
+}
+
+.editor h2 {
+  font-size: clamp(1.4rem, 2.3vw, 1.8rem);
+  font-weight: 700;
+}
+
+.editor h3 {
+  color: color-mix(in srgb, var(--text) 84%, var(--muted));
+  font-size: clamp(1.02rem, 1.7vw, 1.2rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .editor a {
@@ -1414,6 +1544,93 @@ div[contenteditable="true"] {
 
 .editor a:hover {
   color: var(--accent-strong);
+}
+
+.editor-checklist {
+  margin: 0 0 1.1em;
+  padding: 0;
+  list-style: none;
+}
+
+.editor-checklist li {
+  position: relative;
+  margin: 0 0 0.72em;
+  padding-left: 1.9em;
+}
+
+.editor-checklist li::before {
+  content: "";
+  position: absolute;
+  top: 0.36em;
+  left: 0;
+  width: 0.92em;
+  height: 0.92em;
+  border: 1px solid color-mix(in srgb, var(--muted) 32%, var(--line));
+  border-radius: 0.26em;
+  background: color-mix(in srgb, var(--paper) 88%, var(--panel));
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.editor-checklist li.is-checked {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.editor-checklist li.is-checked::before {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.editor-checklist li.is-checked::after {
+  content: "";
+  position: absolute;
+  top: 0.55em;
+  left: 0.28em;
+  width: 0.34em;
+  height: 0.18em;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg);
+}
+
+.editor-media {
+  margin: 1.5em 0;
+  max-width: 100%;
+}
+
+.editor-media img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--paper) 90%, var(--panel));
+  box-shadow: 0 16px 36px rgba(17, 17, 17, 0.08);
+  cursor: pointer;
+  transition:
+    box-shadow 160ms ease,
+    transform 160ms ease,
+    outline-color 160ms ease;
+}
+
+.editor-media img.is-selected {
+  outline: 2px solid color-mix(in srgb, var(--accent) 76%, transparent);
+  outline-offset: 4px;
+  box-shadow: 0 18px 40px rgba(17, 17, 17, 0.12);
+}
+
+.editor.is-drag-over {
+  border-radius: 18px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--accent) 5%, transparent),
+      transparent 42%
+    );
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .editor-highlight {
@@ -1527,7 +1744,7 @@ div[contenteditable="true"] {
 
 .editor-stats {
   position: fixed;
-  left: 320px;
+  left: calc(var(--sidebar-width) + 10px);
   right: 0;
   bottom: 0;
   z-index: 15;
@@ -1542,6 +1759,7 @@ div[contenteditable="true"] {
   color: var(--muted);
   font-size: 0.84rem;
   backdrop-filter: none;
+  overflow: hidden;
 }
 
 .statusbar-tools,
@@ -1549,11 +1767,13 @@ div[contenteditable="true"] {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .statusbar-counts {
   gap: 6px;
+  justify-content: flex-end;
 }
 
 .statusbar-counts span {
@@ -1590,7 +1810,7 @@ div[contenteditable="true"] {
 }
 
 .status-select-small {
-  width: 64px;
+  width: 74px;
 }
 
 .status-icon-button {
@@ -1607,6 +1827,26 @@ div[contenteditable="true"] {
   padding: 0 10px;
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+.editor-stats[data-density="tight"] [data-compact-hide="word-count"],
+.editor-stats[data-density="tight"] [data-compact-hide="clear-highlight"] {
+  display: none;
+}
+
+.sidebar-at-max [data-compact-hide="export-pdf"] {
+  display: none;
+}
+
+.sidebar-at-max [data-compact-hide="line-count"] {
+  display: none;
+}
+
+.editor-stats[data-density="minimal"] [data-compact-hide="word-count"],
+.editor-stats[data-density="minimal"] [data-compact-hide="clear-highlight"],
+.editor-stats[data-density="minimal"] [data-compact-hide="page-width"],
+.editor-stats[data-density="minimal"] [data-compact-hide="export-pdf"] {
+  display: none;
 }
 
 .modal {
@@ -1756,7 +1996,7 @@ div[contenteditable="true"] {
 }
 
 .focus-mode .app-shell {
-  grid-template-columns: 0 minmax(0, 1fr);
+  grid-template-columns: 0 0 minmax(0, 1fr);
 }
 
 .focus-mode .sidebar {
@@ -1766,14 +2006,20 @@ div[contenteditable="true"] {
   border-color: transparent;
 }
 
+.focus-mode .sidebar-resizer {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .focus-mode .editor-stats {
   left: 0;
 }
 
 .focus-mode .page {
-  width: min(900px, calc(100% - 40px));
+  width: min(calc(var(--page-width) + 40px), calc(100% - 40px));
   margin-top: 32px;
   animation: focus-page-in 180ms ease;
+  box-shadow: 0 24px 60px rgba(17, 17, 17, 0.08);
 }
 
 @keyframes focus-page-in {
@@ -1795,6 +2041,10 @@ div[contenteditable="true"] {
   .sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--line);
+  }
+
+  .sidebar-resizer {
+    display: none;
   }
 
   .group-panel,
@@ -1829,6 +2079,11 @@ div[contenteditable="true"] {
     margin: 16px auto 84px;
     padding: 28px 20px 26px;
     border-radius: 20px;
+  }
+
+  .editor-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .editor {
