@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Crimson+Text:wght@400;600&family=DM+Sans:wght@400;500;700&family=EB+Garamond:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=Libre+Baskerville:wght@400;700&family=Manrope:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=EB+Garamond:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Libre+Baskerville:wght@400;700&family=Manrope:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="style.css" />
@@ -313,12 +313,12 @@
                 data-font-select
                 aria-label="Choose editor font"
               >
+                <option value="crimson">Crimson Text</option>
                 <option value="inter">Inter</option>
                 <option value="dm-sans">DM Sans</option>
                 <option value="manrope">Manrope</option>
                 <option value="space-grotesk">Space Grotesk</option>
                 <option value="serif">Instrument Serif</option>
-                <option value="crimson">Crimson Text</option>
                 <option value="baskerville">Libre Baskerville</option>
                 <option value="eb-garamond">EB Garamond</option>
                 <option value="cormorant">Cormorant Garamond</option>
@@ -372,7 +372,7 @@
                 aria-label="Remove highlight"
                 title="Remove highlight"
               >
-                Clear-Highlight
+                Clear Highlight
               </button>
               <button
                 class="icon-button status-icon-button status-text-button"
@@ -382,7 +382,7 @@
                 aria-label="Download entry as PDF"
                 title="Download entry as PDF"
               >
-                Export PDF
+                PDF
               </button>
             </div>
             <div class="statusbar-counts">
@@ -409,8 +409,13 @@
       >
         <div class="modal-header">
           <h2 id="picker-title">Add Entry To Group</h2>
-          <button class="icon-button" type="button" data-close-picker>
-            Close
+          <button
+            class="icon-button"
+            type="button"
+            data-close-picker
+            aria-label="Close"
+          >
+            ×
           </button>
         </div>
         <div class="picker-list" data-picker-list></div>
@@ -433,7 +438,7 @@
             data-close-confirm
             aria-label="Close confirmation"
           >
-            x
+            ×
           </button>
         </div>
         <p class="confirm-text" data-confirm-text></p>
