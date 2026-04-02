@@ -4,6 +4,9 @@ const THEME_COLORS = {
   light: "#f3f0e8",
   dark: "#14181f",
 };
+const MIN_SIDEBAR_WIDTH = 300;
+const MAX_SIDEBAR_WIDTH = 520;
+const MIN_EDITOR_PANEL_WIDTH = 760;
 const HIGHLIGHT_COLORS = {
   light: ["#fff29a", "#c7f1c9", "#bfe3ff", "#ffd6ea"],
   dark: ["#8c7421", "#285a3d", "#204d74", "#74365d"],
@@ -37,6 +40,7 @@ const FONT_SIZE_OPTIONS = [
   "28px",
   "30px",
 ];
+const PAGE_WIDTH_OPTIONS = ["740px", "860px", "980px"];
 const DEFAULT_STATE = {
   entries: [],
   groups: [],
@@ -44,6 +48,11 @@ const DEFAULT_STATE = {
   activeGroupId: "all",
   searchTerm: "",
   entrySort: "recent",
+  fontKey: "inter",
+  fontSize: "18px",
+  lineHeight: "1.82",
+  pageWidth: "860px",
+  sidebarWidth: 320,
   theme: "light",
   focusMode: false,
 };
@@ -55,6 +64,7 @@ const openGroupFormButton = document.querySelector("[data-open-group-form]");
 const importJsonButton = document.querySelector("[data-import-json]");
 const exportJsonButton = document.querySelector("[data-export-json]");
 const importFileInput = document.querySelector("[data-import-file]");
+const imageUploadInput = document.querySelector("[data-image-upload-file]");
 const groupForm = document.querySelector("[data-group-form]");
 const groupInput = document.querySelector("[data-group-input]");
 const groupSubmitButton = document.querySelector("[data-group-submit]");
@@ -71,6 +81,7 @@ const currentTime = document.querySelector("[data-current-time]");
 const activeGroupLabel = document.querySelector("[data-active-group]");
 const entryDate = document.querySelector("[data-entry-date]");
 const saveStatus = document.querySelector("[data-save-status]");
+const editorStats = document.querySelector("[data-editor-stats]");
 const lineCount = document.querySelector("[data-line-count]");
 const wordCount = document.querySelector("[data-word-count]");
 const characterCount = document.querySelector("[data-character-count]");
@@ -92,6 +103,12 @@ const exportPdfToolbarButton = document.querySelector(
 const duplicateEntryButton = document.querySelector("[data-duplicate-entry]");
 const fontSelect = document.querySelector("[data-font-select]");
 const fontSizeSelect = document.querySelector("[data-font-size-select]");
+const pageWidthSelect = document.querySelector("[data-page-width-select]");
+const linkToolbarButton = document.querySelector("[data-link-toolbar]");
+const toggleChecklistButton = document.querySelector("[data-toggle-checklist]");
+const imageUploadTrigger = document.querySelector("[data-image-upload-trigger]");
+const imageTools = document.querySelector("[data-image-tools]");
+const imageSizeRange = document.querySelector("[data-image-size-range]");
 const editorContextMenu = document.querySelector("[data-editor-context-menu]");
 const highlightColorButtons = document.querySelectorAll(
   "[data-highlight-color]",
@@ -108,6 +125,7 @@ const confirmAcceptButton = document.querySelector("[data-confirm-accept]");
 const closeConfirmButtons = document.querySelectorAll("[data-close-confirm]");
 const themeToggleButton = document.querySelector("[data-theme-toggle]");
 const focusToggleButton = document.querySelector("[data-focus-toggle]");
+const sidebarResizer = document.querySelector("[data-sidebar-resizer]");
 
 let state = loadState();
 let pickerGroupId = null;
@@ -116,6 +134,9 @@ let savedSelection = null;
 let lastRenderedGroupId = state.activeGroupId;
 let editingGroupId = null;
 let activeGroupFlyoutId = null;
+let dragDepth = 0;
+let activeEditorImage = null;
+let sidebarResizeSession = null;
 
 initialize();
 
@@ -126,6 +147,9 @@ function initialize() {
   state.theme = resolveInitialTheme(state.theme);
   applyTheme(state.theme);
   applyFocusMode(Boolean(state.focusMode));
+  applyEditorPreferences();
+  applySidebarWidth();
+  syncEditorStatsDensity();
 
   if (!state.groups.length) {
     state.groups = [
@@ -211,6 +235,13 @@ function bindEvents() {
     }
   });
 
+  imageUploadInput?.addEventListener("change", async () => {
+    const files = Array.from(imageUploadInput.files || []);
+    if (!files.length) return;
+    await insertFilesAsMedia(files);
+    imageUploadInput.value = "";
+  });
+
   cancelGroupButton.addEventListener("click", closeGroupForm);
 
   groupForm.addEventListener("submit", (event) => {
@@ -281,10 +312,70 @@ function bindEvents() {
   editor.addEventListener("keyup", syncControlsToSelection);
   editor.addEventListener("focus", syncControlsToSelection);
   editor.addEventListener("click", (event) => {
+    const image = event.target.closest(".editor-media img");
+    if (image && editor.contains(image)) {
+      event.preventDefault();
+      selectEditorImage(image);
+      return;
+    }
+
+    const checklistItem = event.target.closest(".editor-checklist li");
+    if (checklistItem && editor.contains(checklistItem)) {
+      const listRect = checklistItem.getBoundingClientRect();
+      if (event.clientX <= listRect.left + 28) {
+        event.preventDefault();
+        checklistItem.classList.toggle("is-checked");
+        handleFormattedContentChange();
+        return;
+      }
+    }
+
     const link = event.target.closest("a[href]");
     if (!link || !editor.contains(link)) return;
+    if (event.metaKey || event.ctrlKey) {
+      event.preventDefault();
+      window.open(link.href, "_blank", "noopener");
+      return;
+    }
+    pulseStatus("Use Ctrl/Cmd-click to open links");
+  });
+  editor.addEventListener("paste", async (event) => {
+    const files = Array.from(event.clipboardData?.files || []).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+    if (!files.length) return;
     event.preventDefault();
-    window.open(link.href, "_blank", "noopener");
+    await insertFilesAsMedia(files);
+  });
+  editor.addEventListener("dragenter", (event) => {
+    if (!hasImageTransfer(event.dataTransfer)) return;
+    event.preventDefault();
+    dragDepth += 1;
+    editor.classList.add("is-drag-over");
+  });
+  editor.addEventListener("dragover", (event) => {
+    if (!hasImageTransfer(event.dataTransfer)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    editor.classList.add("is-drag-over");
+  });
+  editor.addEventListener("dragleave", (event) => {
+    event.preventDefault();
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) {
+      editor.classList.remove("is-drag-over");
+    }
+  });
+  editor.addEventListener("drop", async (event) => {
+    const files = Array.from(event.dataTransfer?.files || []).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+    if (!files.length) return;
+    event.preventDefault();
+    dragDepth = 0;
+    editor.classList.remove("is-drag-over");
+    placeCaretFromPoint(event.clientX, event.clientY);
+    await insertFilesAsMedia(files);
   });
   editor.addEventListener("contextmenu", (event) => {
     if (!hasEditableSelection()) {
@@ -316,6 +407,14 @@ function bindEvents() {
     state.fontSize = fontSizeSelect.value;
     applyFontSizeToSelection(fontSizeSelect.value);
     persistState();
+    applyEditorPreferences();
+  });
+
+  pageWidthSelect?.addEventListener("change", () => {
+    state.pageWidth = pageWidthSelect.value;
+    applyEditorPreferences();
+    persistState();
+    pulseStatus("Page width updated");
   });
 
   fontSelect.addEventListener("wheel", (event) => {
@@ -331,6 +430,15 @@ function bindEvents() {
     cycleSelectOption(fontSizeSelect, event.deltaY);
     state.fontSize = fontSizeSelect.value;
     applyFontSizeToSelection(fontSizeSelect.value);
+    persistState();
+    applyEditorPreferences();
+  });
+
+  pageWidthSelect?.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    cycleSelectOption(pageWidthSelect, event.deltaY);
+    state.pageWidth = pageWidthSelect.value;
+    applyEditorPreferences();
     persistState();
   });
 
@@ -355,6 +463,52 @@ function bindEvents() {
 
   clearHighlightToolbarButton?.addEventListener("click", () => {
     removeHighlightFromSelection();
+  });
+
+  linkToolbarButton?.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+  });
+
+  linkToolbarButton?.addEventListener("click", () => {
+    openLinkEditor();
+  });
+
+  toggleChecklistButton?.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+  });
+
+  toggleChecklistButton?.addEventListener("click", () => {
+    toggleChecklist();
+  });
+
+  imageUploadTrigger?.addEventListener("click", () => {
+    imageUploadInput?.click();
+  });
+
+  imageUploadTrigger?.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+  });
+
+  imageSizeRange?.addEventListener("input", () => {
+    resizeActiveImage(imageSizeRange.value);
+  });
+
+  sidebarResizer?.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+    startSidebarResize(event.clientX);
+  });
+
+  sidebarResizer?.addEventListener("keydown", (event) => {
+    const currentWidth = normalizeSidebarWidth(state.sidebarWidth);
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      updateSidebarWidth(currentWidth - 16);
+      return;
+    }
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      updateSidebarWidth(currentWidth + 16);
+    }
   });
 
   exportPdfToolbarButton?.addEventListener("click", () => {
@@ -404,6 +558,16 @@ function bindEvents() {
   });
 
   document.addEventListener("mousedown", (event) => {
+    if (
+      imageTools?.contains(event.target) ||
+      event.target.closest(".editor-media img")
+    ) {
+      return;
+    }
+    clearActiveImageSelection();
+  });
+
+  document.addEventListener("mousedown", (event) => {
     if (editorContextMenu.classList.contains("is-hidden")) return;
     if (editorContextMenu.contains(event.target)) return;
     hideEditorContextMenu();
@@ -441,14 +605,58 @@ function bindEvents() {
       return;
     }
 
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey) {
+      const lowerKey = event.key.toLowerCase();
+      if (lowerKey === "7") {
+        event.preventDefault();
+        toggleChecklist();
+        return;
+      }
+      if (lowerKey === "k") {
+        event.preventDefault();
+        openLinkEditor();
+        return;
+      }
+      if (lowerKey === "1" || lowerKey === "2" || lowerKey === "3") {
+        event.preventDefault();
+        document.execCommand("formatBlock", false, `h${lowerKey}`);
+        handleFormattedContentChange();
+        return;
+      }
+    }
+
     if (event.key === "Escape") {
       hideEditorContextMenu();
       closeGroupFlyout();
       setEntrySortMenuOpen(false);
       closeEntryPicker();
       closeConfirmModal();
+      editor.classList.remove("is-drag-over");
+      dragDepth = 0;
+      clearActiveImageSelection();
+      stopSidebarResize();
     }
   });
+
+  window.addEventListener("mousemove", (event) => {
+    if (!sidebarResizeSession) return;
+    updateSidebarWidth(
+      sidebarResizeSession.startWidth + event.clientX - sidebarResizeSession.startX,
+      false,
+    );
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (!sidebarResizeSession) return;
+    stopSidebarResize(true);
+  });
+
+  if (window.ResizeObserver && editorStats) {
+    const resizeObserver = new ResizeObserver(() => {
+      syncEditorStatsDensity();
+    });
+    resizeObserver.observe(editorStats);
+  }
 
   groupFlyoutActions.forEach((button) => {
     button.addEventListener("click", () => {
@@ -514,6 +722,7 @@ function render() {
   renderThemeToggle();
   renderFocusToggle();
   renderEntrySort();
+  applyEditorPreferences();
   renderGroups();
   renderList();
   renderEditor();
@@ -769,6 +978,8 @@ function renderEditor() {
 
   titleInput.value = entry.title;
   editor.innerHTML = normalizeEditorMarkup(entry.body || "");
+  clearActiveImageSelection();
+  applyEditorPreferences();
   renderEditorMeta();
   saveStatus.textContent = "Saved";
   updateCounts();
@@ -1010,6 +1221,88 @@ function renderEditorMeta() {
   entryDate.textContent = formatLongDate(entry.updatedAt);
 }
 
+function applyEditorPreferences() {
+  const fontKey = state.fontKey || "inter";
+  const fontSize = state.fontSize || "18px";
+  const lineHeight = state.lineHeight || "1.82";
+  const pageWidth = state.pageWidth || "860px";
+
+  document.documentElement.style.setProperty(
+    "--editor-font",
+    `"${FONT_MAP[fontKey] || FONT_MAP.inter}", sans-serif`,
+  );
+  document.documentElement.style.setProperty("--editor-size", fontSize);
+  document.documentElement.style.setProperty("--editor-line-height", lineHeight);
+  document.documentElement.style.setProperty("--page-width", pageWidth);
+
+  if (fontSelect) fontSelect.value = fontKey;
+  if (fontSizeSelect) fontSizeSelect.value = fontSize;
+  if (pageWidthSelect) {
+    pageWidthSelect.value = PAGE_WIDTH_OPTIONS.includes(pageWidth)
+      ? pageWidth
+      : "860px";
+  }
+}
+
+function applySidebarWidth() {
+  const width = normalizeSidebarWidth(state.sidebarWidth);
+  document.documentElement.style.setProperty("--sidebar-width", `${width}px`);
+  document.documentElement.classList.toggle(
+    "sidebar-at-max",
+    width >= normalizeSidebarWidth(MAX_SIDEBAR_WIDTH),
+  );
+  syncEditorStatsDensity();
+}
+
+function normalizeSidebarWidth(width) {
+  const viewportLimitedMax = Math.max(
+    MIN_SIDEBAR_WIDTH,
+    window.innerWidth - 10 - MIN_EDITOR_PANEL_WIDTH,
+  );
+  return Math.min(
+    Math.min(MAX_SIDEBAR_WIDTH, viewportLimitedMax),
+    Math.max(MIN_SIDEBAR_WIDTH, parseInt(width, 10) || 320),
+  );
+}
+
+function startSidebarResize(startX) {
+  if (window.innerWidth <= 920) return;
+  sidebarResizeSession = {
+    startX,
+    startWidth: normalizeSidebarWidth(state.sidebarWidth),
+  };
+  document.body.classList.add("is-resizing-sidebar");
+}
+
+function updateSidebarWidth(width, shouldPersist = true) {
+  state.sidebarWidth = normalizeSidebarWidth(width);
+  applySidebarWidth();
+  if (shouldPersist) {
+    persistState();
+  }
+}
+
+function stopSidebarResize(shouldPersist = false) {
+  if (!sidebarResizeSession) return;
+  sidebarResizeSession = null;
+  document.body.classList.remove("is-resizing-sidebar");
+  if (shouldPersist) {
+    persistState();
+  }
+}
+
+function syncEditorStatsDensity() {
+  if (!editorStats) return;
+  const width = editorStats.getBoundingClientRect().width;
+  let density = "roomy";
+
+  if (width < 1040) density = "compact";
+  if (width < 880) density = "tight";
+  if (width < 720) density = "minimal";
+
+  editorStats.dataset.density = density;
+}
+
 function updateCounts() {
   const text = stripHtml(normalizeEditorMarkup(editor.innerHTML))
     .replace(/\s+/g, " ")
@@ -1086,6 +1379,109 @@ function applyFontSizeToSelection(size) {
 
   wrapRangeWithStyle(range, { fontSize: size });
   handleFormattedContentChange();
+}
+
+function openLinkEditor() {
+  restoreSelection();
+  const range = getEditorSelectionRange();
+  if (!range) {
+    pulseStatus("Place the caret or select text first");
+    return;
+  }
+
+  const existingLink = getSelectedLink(range);
+  const selectedText = window.getSelection()?.toString().trim() || "";
+  const suggestedUrl =
+    existingLink?.getAttribute("href") ||
+    (URL_PATTERN.test(selectedText) ? normalizeUrl(selectedText) : "https://");
+  const url = window.prompt(
+    "Enter a link URL. Leave it blank to remove the current link.",
+    suggestedUrl,
+  );
+
+  if (url === null) {
+    editor.focus();
+    return;
+  }
+
+  const trimmedUrl = url.trim();
+  if (!trimmedUrl) {
+    if (existingLink) {
+      unwrapNode(existingLink);
+      handleFormattedContentChange();
+      pulseStatus("Link removed");
+    }
+    return;
+  }
+
+  const normalizedHref = normalizeUrl(trimmedUrl);
+  if (existingLink) {
+    existingLink.href = normalizedHref;
+    existingLink.target = "_blank";
+    existingLink.rel = "noopener noreferrer";
+    handleFormattedContentChange();
+    pulseStatus("Link updated");
+    return;
+  }
+
+  if (!range.collapsed && selectedText) {
+    document.execCommand("createLink", false, normalizedHref);
+    const link = getSelectedLink(getEditorSelectionRange());
+    if (link) {
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+    }
+    handleFormattedContentChange();
+    pulseStatus("Link added");
+    return;
+  }
+
+  const label = window.prompt("Link text", trimmedUrl) ?? trimmedUrl;
+  insertHtmlAtSelection(
+    `<a href="${escapeHtml(normalizedHref)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label.trim() || trimmedUrl)}</a>`,
+  );
+  handleFormattedContentChange();
+  pulseStatus("Link inserted");
+}
+
+function toggleChecklist() {
+  restoreSelection();
+  const range = getEditorSelectionRange();
+  if (!range) return;
+
+  const currentChecklist = getClosestChecklist(range.startContainer);
+  if (currentChecklist) {
+    convertChecklistToParagraphs(currentChecklist);
+    editor.focus();
+    handleFormattedContentChange();
+    pulseStatus("Checklist removed");
+    return;
+  }
+
+  const blocks = getSelectedBlocks(range);
+  const checklist = document.createElement("ul");
+  checklist.className = "editor-checklist";
+
+  if (!blocks.length) {
+    const item = document.createElement("li");
+    item.innerHTML = range.collapsed ? "Checklist item" : range.toString().trim();
+    checklist.appendChild(item);
+    range.deleteContents();
+    range.insertNode(checklist);
+  } else {
+    blocks.forEach((block) => {
+      const item = document.createElement("li");
+      item.innerHTML = block.innerHTML.trim() || "Checklist item";
+      checklist.appendChild(item);
+    });
+    const firstBlock = blocks[0];
+    firstBlock.before(checklist);
+    blocks.forEach((block) => block.remove());
+  }
+
+  placeCaretInside(checklist.querySelector("li"));
+  handleFormattedContentChange();
+  pulseStatus("Checklist added");
 }
 
 function wrapRangeWithStyle(range, styles, options = {}) {
@@ -1367,11 +1763,13 @@ function syncControlsToSelection() {
   if (normalizedSize) {
     fontSizeSelect.value = normalizedSize;
   }
+
 }
 
 function resetControlState() {
   fontSelect.value = state.fontKey || "inter";
   fontSizeSelect.value = state.fontSize || "18px";
+  if (pageWidthSelect) pageWidthSelect.value = state.pageWidth || "860px";
 }
 
 function resolveFontKey(fontFamily) {
@@ -1410,6 +1808,174 @@ function cleanupStyledNode(node) {
   parent.removeChild(node);
 }
 
+function getEditorSelectionRange() {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return null;
+  const range = selection.getRangeAt(0);
+  return editor.contains(range.commonAncestorContainer) ? range : null;
+}
+
+function getSelectedLink(range) {
+  if (!range) return null;
+  let node =
+    range.startContainer.nodeType === Node.TEXT_NODE
+      ? range.startContainer.parentElement
+      : range.startContainer;
+
+  while (node && node !== editor) {
+    if (node instanceof HTMLAnchorElement) return node;
+    node = node.parentElement;
+  }
+
+  return null;
+}
+
+function getClosestChecklist(node) {
+  const element =
+    node instanceof HTMLElement ? node : node.parentElement || null;
+  return element?.closest(".editor-checklist") || null;
+}
+
+function getSelectedBlocks(range) {
+  const blockSelectors = "p,h1,h2,h3,blockquote,li";
+  const blocks = Array.from(editor.querySelectorAll(blockSelectors)).filter(
+    (block) => range.intersectsNode(block),
+  );
+
+  if (blocks.length) return blocks;
+
+  const currentBlock =
+    (range.startContainer instanceof HTMLElement
+      ? range.startContainer
+      : range.startContainer.parentElement
+    )?.closest(blockSelectors) || null;
+
+  return currentBlock ? [currentBlock] : [];
+}
+
+function convertChecklistToParagraphs(checklist) {
+  if (!checklist) return;
+  const paragraphs = Array.from(checklist.querySelectorAll("li")).map((item) => {
+    const paragraph = document.createElement("p");
+    paragraph.innerHTML = item.innerHTML.trim() || "<br>";
+    return paragraph;
+  });
+
+  checklist.replaceWith(...paragraphs);
+}
+
+function placeCaretInside(node) {
+  if (!node) return;
+  const target =
+    node.lastChild && node.lastChild.nodeType === Node.TEXT_NODE
+      ? node.lastChild
+      : node;
+  const range = document.createRange();
+  range.selectNodeContents(node);
+  range.collapse(false);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  cacheSelection();
+  editor.focus();
+}
+
+function insertHtmlAtSelection(html) {
+  restoreSelection();
+  document.execCommand("insertHTML", false, html);
+}
+
+function selectEditorImage(image) {
+  if (!image) return;
+  clearActiveImageSelection();
+  activeEditorImage = image;
+  image.classList.add("is-selected");
+
+  const figure = image.closest(".editor-media");
+  const width = parseInt(figure?.dataset.imageWidth || "100", 10);
+  if (imageTools) imageTools.classList.remove("is-hidden");
+  if (imageSizeRange) imageSizeRange.value = String(width || 100);
+}
+
+function clearActiveImageSelection() {
+  if (activeEditorImage) {
+    activeEditorImage.classList.remove("is-selected");
+  }
+  activeEditorImage = null;
+  if (imageTools) imageTools.classList.add("is-hidden");
+}
+
+function resizeActiveImage(value) {
+  if (!activeEditorImage) return;
+  const figure = activeEditorImage.closest(".editor-media");
+  if (!figure) return;
+
+  const width = Math.min(100, Math.max(30, parseInt(value, 10) || 100));
+  figure.dataset.imageWidth = String(width);
+  figure.style.width = `${width}%`;
+  handleFormattedContentChange();
+}
+
+async function insertFilesAsMedia(files) {
+  const images = files.filter((file) => file.type.startsWith("image/"));
+  if (!images.length) return;
+
+  const htmlParts = [];
+  for (const file of images) {
+    const src = await readFileAsDataUrl(file);
+    htmlParts.push(createImageHtml(src, file.name));
+  }
+
+  insertHtmlAtSelection(htmlParts.join(""));
+  handleFormattedContentChange();
+  pulseStatus(images.length === 1 ? "Image inserted" : "Images inserted");
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function createImageHtml(src, name = "") {
+  const alt = name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim();
+  return `
+    <figure class="editor-media" data-image-width="100" style="width: 100%">
+      <img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" />
+    </figure>
+    <p><br></p>
+  `;
+}
+
+function hasImageTransfer(dataTransfer) {
+  if (!dataTransfer) return false;
+  return Array.from(dataTransfer.items || []).some((item) =>
+    item.type.startsWith("image/"),
+  );
+}
+
+function placeCaretFromPoint(x, y) {
+  const range =
+    document.caretRangeFromPoint?.(x, y) ||
+    (() => {
+      const position = document.caretPositionFromPoint?.(x, y);
+      if (!position) return null;
+      const nextRange = document.createRange();
+      nextRange.setStart(position.offsetNode, position.offset);
+      nextRange.collapse(true);
+      return nextRange;
+    })();
+
+  if (!range || !editor.contains(range.startContainer)) return;
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  cacheSelection();
+}
+
 function cycleSelectOption(select, deltaY) {
   const options = Array.from(select.options);
   const currentIndex = options.findIndex(
@@ -1432,6 +1998,11 @@ function exportJsonState() {
       activeGroupId: state.activeGroupId,
       entrySort: state.entrySort,
       theme: state.theme,
+      fontKey: state.fontKey,
+      fontSize: state.fontSize,
+      lineHeight: state.lineHeight,
+      pageWidth: state.pageWidth,
+      focusMode: state.focusMode,
     },
     "pensera-data.json",
   );
@@ -1494,10 +2065,64 @@ function exportCurrentEntryAsPdf() {
       }
       .content {
         color: var(--text);
-        font-size: ${state.fontSize || "18px"};
-        line-height: 1.82;
+      font-size: ${state.fontSize || "18px"};
+        line-height: ${state.lineHeight || "1.82"};
       }
       .content p { margin: 0 0 1em; }
+      .content h2,
+      .content h3,
+      .content h4 {
+        margin: 1.4em 0 0.55em;
+        line-height: 1.15;
+      }
+      .content h2 { font-size: 1.8em; }
+      .content h3 { font-size: 1.4em; }
+      .content h4 { font-size: 1.15em; letter-spacing: 0.02em; text-transform: uppercase; }
+      .content .editor-checklist {
+        margin: 0 0 1.1em;
+        padding: 0;
+        list-style: none;
+      }
+      .content .editor-checklist li {
+        position: relative;
+        margin: 0 0 0.7em;
+        padding-left: 1.8em;
+      }
+      .content .editor-checklist li::before {
+        content: "";
+        position: absolute;
+        top: 0.35em;
+        left: 0;
+        width: 0.9em;
+        height: 0.9em;
+        border: 1px solid var(--line);
+        border-radius: 0.25em;
+      }
+      .content .editor-checklist li.is-checked {
+        color: var(--muted);
+        text-decoration: line-through;
+      }
+      .content .editor-checklist li.is-checked::before {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+      .content .editor-checklist li.is-checked::after {
+        content: "";
+        position: absolute;
+        top: 0.54em;
+        left: 0.28em;
+        width: 0.34em;
+        height: 0.18em;
+        border-left: 2px solid #fff;
+        border-bottom: 2px solid #fff;
+        transform: rotate(-45deg);
+      }
+      .content .editor-media { margin: 1.4em 0; }
+      .content .editor-media img {
+        display: block;
+        width: 100%;
+        border-radius: 18px;
+      }
       .content a {
         color: var(--accent);
         text-decoration: underline;
@@ -1622,7 +2247,13 @@ function normalizeImportedState(parsed) {
     activeGroupId: "all",
     searchTerm: "",
     entrySort: parsed.entrySort || "recent",
+    fontKey: parsed.fontKey || "inter",
+    fontSize: parsed.fontSize || "18px",
+    lineHeight: parsed.lineHeight || "1.82",
+    pageWidth: parsed.pageWidth || "860px",
+    sidebarWidth: normalizeSidebarWidth(parsed.sidebarWidth),
     theme: resolveInitialTheme(parsed.theme),
+    focusMode: Boolean(parsed.focusMode),
   };
 }
 
@@ -1662,6 +2293,9 @@ function loadState() {
       entrySort: parsed.entrySort || "recent",
       fontKey: parsed.fontKey || "inter",
       fontSize: parsed.fontSize || "18px",
+      lineHeight: parsed.lineHeight || "1.82",
+      pageWidth: parsed.pageWidth || "860px",
+      sidebarWidth: normalizeSidebarWidth(parsed.sidebarWidth),
       theme: resolveInitialTheme(parsed.theme),
       focusMode: Boolean(parsed.focusMode),
     };
@@ -1681,6 +2315,9 @@ function persistState() {
       entrySort: state.entrySort,
       fontKey: state.fontKey,
       fontSize: state.fontSize,
+      lineHeight: state.lineHeight,
+      pageWidth: state.pageWidth,
+      sidebarWidth: state.sidebarWidth,
       theme: state.theme,
       focusMode: state.focusMode,
     }),
@@ -1796,7 +2433,41 @@ function normalizeEditorMarkup(html) {
   const cleaned = html
     .replace(/\u200B/g, "")
     .replace(/<span[^>]*data-typing-marker="true"[^>]*><\/span>/g, "");
-  return linkifyHtml(cleaned);
+  const container = document.createElement("div");
+  container.innerHTML = linkifyHtml(cleaned);
+
+  container.querySelectorAll("img").forEach((image) => {
+    image.removeAttribute("width");
+    image.removeAttribute("height");
+  });
+
+  container.querySelectorAll("figure").forEach((figure) => {
+    if (!figure.classList.contains("editor-media")) {
+      figure.classList.add("editor-media");
+    }
+    if (figure.classList.contains("editor-media")) {
+      const width = Math.min(
+        100,
+        Math.max(30, parseInt(figure.dataset.imageWidth || "100", 10) || 100),
+      );
+      figure.dataset.imageWidth = String(width);
+      figure.style.width = `${width}%`;
+    }
+  });
+
+  container.querySelectorAll("ul").forEach((list) => {
+    if (list.classList.contains("editor-checklist")) {
+      Array.from(list.children).forEach((child) => {
+        if (child.tagName !== "LI") {
+          const item = document.createElement("li");
+          item.innerHTML = child.innerHTML || child.textContent || "Checklist item";
+          child.replaceWith(item);
+        }
+      });
+    }
+  });
+
+  return container.innerHTML;
 }
 
 function linkifyHtml(html) {
