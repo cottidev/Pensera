@@ -48,7 +48,7 @@ const DEFAULT_STATE = {
   activeGroupId: "all",
   searchTerm: "",
   entrySort: "recent",
-  fontKey: "inter",
+  fontKey: "crimson",
   fontSize: "18px",
   lineHeight: "1.82",
   pageWidth: "860px",
@@ -106,7 +106,9 @@ const fontSizeSelect = document.querySelector("[data-font-size-select]");
 const pageWidthSelect = document.querySelector("[data-page-width-select]");
 const linkToolbarButton = document.querySelector("[data-link-toolbar]");
 const toggleChecklistButton = document.querySelector("[data-toggle-checklist]");
-const imageUploadTrigger = document.querySelector("[data-image-upload-trigger]");
+const imageUploadTrigger = document.querySelector(
+  "[data-image-upload-trigger]",
+);
 const imageTools = document.querySelector("[data-image-tools]");
 const imageSizeRange = document.querySelector("[data-image-size-range]");
 const editorContextMenu = document.querySelector("[data-editor-context-menu]");
@@ -641,7 +643,9 @@ function bindEvents() {
   window.addEventListener("mousemove", (event) => {
     if (!sidebarResizeSession) return;
     updateSidebarWidth(
-      sidebarResizeSession.startWidth + event.clientX - sidebarResizeSession.startX,
+      sidebarResizeSession.startWidth +
+        event.clientX -
+        sidebarResizeSession.startX,
       false,
     );
   });
@@ -660,7 +664,9 @@ function bindEvents() {
 
   groupFlyoutActions.forEach((button) => {
     button.addEventListener("click", () => {
-      const group = state.groups.find((item) => item.id === activeGroupFlyoutId);
+      const group = state.groups.find(
+        (item) => item.id === activeGroupFlyoutId,
+      );
       if (!group || group.id === "all") return;
 
       closeGroupFlyout();
@@ -674,7 +680,9 @@ function bindEvents() {
         exportJsonBlob(
           {
             groups: [group],
-            entries: state.entries.filter((entry) => entry.groupId === group.id),
+            entries: state.entries.filter(
+              (entry) => entry.groupId === group.id,
+            ),
           },
           `${slugify(group.name)}-group.json`,
         );
@@ -859,8 +867,34 @@ function renderGroups() {
 function renderList() {
   const shouldAnimateGroupSwitch = lastRenderedGroupId !== state.activeGroupId;
   entryList.innerHTML = "";
+  const visibleEntries = getVisibleEntries();
 
-  getVisibleEntries().forEach((entry, index) => {
+  if (!visibleEntries.length) {
+    const emptyState = document.createElement("div");
+    emptyState.className = "empty-state";
+    emptyState.innerHTML = `
+      <div class="empty-state-eyebrow">No entries found</div>
+      <h3 class="empty-state-title">${
+        state.searchTerm
+          ? "Nothing matches your search."
+          : state.activeGroupId === "all"
+            ? "Your journal is ready for its first page."
+            : "This group is still empty."
+      }</h3>
+      <p class="empty-state-copy">${
+        state.searchTerm
+          ? "Try a broader keyword or clear the search field to see more entries."
+          : state.activeGroupId === "all"
+            ? "Create a new entry and start building a calmer, better organized writing space."
+            : "Move an existing entry into this group or create a new one here."
+      }</p>
+    `;
+    entryList.appendChild(emptyState);
+    lastRenderedGroupId = state.activeGroupId;
+    return;
+  }
+
+  visibleEntries.forEach((entry, index) => {
     const fragment = entryTemplate.content.cloneNode(true);
     const card = fragment.querySelector(".entry-item");
     const openButton = fragment.querySelector(".entry-open-button");
@@ -1222,17 +1256,20 @@ function renderEditorMeta() {
 }
 
 function applyEditorPreferences() {
-  const fontKey = state.fontKey || "inter";
+  const fontKey = state.fontKey || "crimson";
   const fontSize = state.fontSize || "18px";
   const lineHeight = state.lineHeight || "1.82";
   const pageWidth = state.pageWidth || "860px";
 
   document.documentElement.style.setProperty(
     "--editor-font",
-    `"${FONT_MAP[fontKey] || FONT_MAP.inter}", sans-serif`,
+    `"${FONT_MAP[fontKey] || FONT_MAP.crimson}", sans-serif`,
   );
   document.documentElement.style.setProperty("--editor-size", fontSize);
-  document.documentElement.style.setProperty("--editor-line-height", lineHeight);
+  document.documentElement.style.setProperty(
+    "--editor-line-height",
+    lineHeight,
+  );
   document.documentElement.style.setProperty("--page-width", pageWidth);
 
   if (fontSelect) fontSelect.value = fontKey;
@@ -1464,7 +1501,9 @@ function toggleChecklist() {
 
   if (!blocks.length) {
     const item = document.createElement("li");
-    item.innerHTML = range.collapsed ? "Checklist item" : range.toString().trim();
+    item.innerHTML = range.collapsed
+      ? "Checklist item"
+      : range.toString().trim();
     checklist.appendChild(item);
     range.deleteContents();
     range.insertNode(checklist);
@@ -1763,11 +1802,10 @@ function syncControlsToSelection() {
   if (normalizedSize) {
     fontSizeSelect.value = normalizedSize;
   }
-
 }
 
 function resetControlState() {
-  fontSelect.value = state.fontKey || "inter";
+  fontSelect.value = state.fontKey || "crimson";
   fontSizeSelect.value = state.fontSize || "18px";
   if (pageWidthSelect) pageWidthSelect.value = state.pageWidth || "860px";
 }
@@ -1777,7 +1815,7 @@ function resolveFontKey(fontFamily) {
   return (
     Object.entries(FONT_MAP).find(([, value]) =>
       lower.includes(value.toLowerCase()),
-    )?.[0] || "inter"
+    )?.[0] || "crimson"
   );
 }
 
@@ -1855,11 +1893,13 @@ function getSelectedBlocks(range) {
 
 function convertChecklistToParagraphs(checklist) {
   if (!checklist) return;
-  const paragraphs = Array.from(checklist.querySelectorAll("li")).map((item) => {
-    const paragraph = document.createElement("p");
-    paragraph.innerHTML = item.innerHTML.trim() || "<br>";
-    return paragraph;
-  });
+  const paragraphs = Array.from(checklist.querySelectorAll("li")).map(
+    (item) => {
+      const paragraph = document.createElement("p");
+      paragraph.innerHTML = item.innerHTML.trim() || "<br>";
+      return paragraph;
+    },
+  );
 
   checklist.replaceWith(...paragraphs);
 }
@@ -1941,7 +1981,10 @@ function readFileAsDataUrl(file) {
 }
 
 function createImageHtml(src, name = "") {
-  const alt = name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim();
+  const alt = name
+    .replace(/\.[^.]+$/, "")
+    .replace(/[-_]+/g, " ")
+    .trim();
   return `
     <figure class="editor-media" data-image-width="100" style="width: 100%">
       <img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" />
@@ -2247,7 +2290,7 @@ function normalizeImportedState(parsed) {
     activeGroupId: "all",
     searchTerm: "",
     entrySort: parsed.entrySort || "recent",
-    fontKey: parsed.fontKey || "inter",
+    fontKey: parsed.fontKey || "crimson",
     fontSize: parsed.fontSize || "18px",
     lineHeight: parsed.lineHeight || "1.82",
     pageWidth: parsed.pageWidth || "860px",
@@ -2291,7 +2334,7 @@ function loadState() {
       activeGroupId: parsed.activeGroupId || "all",
       searchTerm: "",
       entrySort: parsed.entrySort || "recent",
-      fontKey: parsed.fontKey || "inter",
+      fontKey: parsed.fontKey || "crimson",
       fontSize: parsed.fontSize || "18px",
       lineHeight: parsed.lineHeight || "1.82",
       pageWidth: parsed.pageWidth || "860px",
@@ -2460,7 +2503,8 @@ function normalizeEditorMarkup(html) {
       Array.from(list.children).forEach((child) => {
         if (child.tagName !== "LI") {
           const item = document.createElement("li");
-          item.innerHTML = child.innerHTML || child.textContent || "Checklist item";
+          item.innerHTML =
+            child.innerHTML || child.textContent || "Checklist item";
           child.replaceWith(item);
         }
       });
