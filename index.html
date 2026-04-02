@@ -186,7 +186,16 @@
         </section>
       </aside>
 
+      <button
+        class="sidebar-resizer"
+        type="button"
+        data-sidebar-resizer
+        aria-label="Resize sidebar"
+        title="Drag to resize sidebar"
+      ></button>
+
       <input type="file" accept="application/json" data-import-file hidden />
+      <input type="file" accept="image/*" data-image-upload-file hidden />
 
       <main class="editor-panel">
         <header class="editor-topbar">
@@ -234,6 +243,60 @@
             data-title
           />
 
+          <div class="editor-toolbar" aria-label="Writing tools">
+            <div class="editor-toolbar-group">
+              <button
+                class="icon-button status-icon-button status-text-button"
+                type="button"
+                data-link-toolbar
+                aria-label="Insert or edit link"
+                title="Insert or edit link"
+              >
+                Link
+              </button>
+              <button
+                class="icon-button status-icon-button status-text-button"
+                type="button"
+                data-toggle-checklist
+                aria-label="Toggle checklist"
+                title="Toggle checklist"
+              >
+                Checklist
+              </button>
+              <button
+                class="icon-button status-icon-button status-text-button"
+                type="button"
+                data-image-upload-trigger
+                aria-label="Insert image"
+                title="Insert image"
+              >
+                Image
+              </button>
+            </div>
+            <div class="editor-toolbar-group editor-toolbar-help">
+              Paste or drop images directly into the editor
+            </div>
+            <div
+              class="editor-toolbar-group editor-image-tools is-hidden"
+              data-image-tools
+            >
+              <label class="editor-image-size-label" for="image-size">
+                Image size
+              </label>
+              <input
+                id="image-size"
+                class="editor-image-size"
+                type="range"
+                min="30"
+                max="100"
+                step="5"
+                value="100"
+                data-image-size-range
+                aria-label="Resize selected image"
+              />
+            </div>
+          </div>
+
           <div
             class="editor"
             contenteditable="true"
@@ -242,7 +305,7 @@
             aria-label="Journal editor"
           ></div>
 
-          <div class="editor-stats">
+          <div class="editor-stats" data-editor-stats>
             <div class="statusbar-tools">
               <select
                 id="font-family"
@@ -275,6 +338,16 @@
                 <option value="28px">28</option>
                 <option value="30px">30</option>
               </select>
+              <select
+                class="status-select status-select-small"
+                data-compact-hide="page-width"
+                data-page-width-select
+                aria-label="Choose page width"
+              >
+                <option value="740px">Narrow</option>
+                <option value="860px">Balanced</option>
+                <option value="980px">Wide</option>
+              </select>
               <button
                 class="icon-button status-icon-button"
                 type="button"
@@ -294,6 +367,7 @@
               <button
                 class="icon-button status-icon-button status-text-button"
                 type="button"
+                data-compact-hide="clear-highlight"
                 data-clear-highlight-toolbar
                 aria-label="Remove highlight"
                 title="Remove highlight"
@@ -303,6 +377,7 @@
               <button
                 class="icon-button status-icon-button status-text-button"
                 type="button"
+                data-compact-hide="export-pdf"
                 data-export-pdf-toolbar
                 aria-label="Download entry as PDF"
                 title="Download entry as PDF"
@@ -311,8 +386,12 @@
               </button>
             </div>
             <div class="statusbar-counts">
-              <span><strong data-line-count>0</strong> lines</span>
-              <span><strong data-word-count>0</strong> words</span>
+              <span data-compact-hide="line-count"
+                ><strong data-line-count>0</strong> lines</span
+              >
+              <span data-compact-hide="word-count"
+                ><strong data-word-count>0</strong> words</span
+              >
               <span><strong data-character-count>0</strong> characters</span>
             </div>
           </div>
