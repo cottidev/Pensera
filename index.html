@@ -54,7 +54,7 @@
                   >Your writing saves automatically</span
                 >
                 <span class="help-tooltip-item"
-                  >Shortcuts: Ctrl/Cmd + N for new, Ctrl/Cmd + Shift + D to
+                  >Shortcuts: Ctrl/Cmd + E for new, Ctrl/Cmd + Shift + D to
                   duplicate</span
                 >
                 <span class="help-tooltip-item"
@@ -338,16 +338,65 @@
                 <option value="28px">28</option>
                 <option value="30px">30</option>
               </select>
-              <select
-                class="status-select status-select-small"
+              <div
+                class="page-width-dropdown"
                 data-compact-hide="page-width"
-                data-page-width-select
-                aria-label="Choose page width"
+                data-page-width-dropdown
               >
-                <option value="740px">Narrow</option>
-                <option value="860px">Balanced</option>
-                <option value="980px">Wide</option>
-              </select>
+                <button
+                  class="page-width-trigger"
+                  type="button"
+                  data-page-width-trigger
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                  aria-label="Choose page width"
+                >
+                  <span data-page-width-label>Balanced</span>
+                </button>
+                <div
+                  class="page-width-menu is-hidden"
+                  data-page-width-menu
+                  role="listbox"
+                  aria-label="Choose page width"
+                >
+                  <button
+                    class="page-width-option"
+                    type="button"
+                    data-page-width-option="740px"
+                    role="option"
+                  >
+                    <span class="page-width-option-icon">
+                      <span></span>
+                    </span>
+                    <span class="page-width-option-label">Narrow</span>
+                    <span class="page-width-option-val">740px</span>
+                  </button>
+                  <button
+                    class="page-width-option"
+                    type="button"
+                    data-page-width-option="860px"
+                    role="option"
+                  >
+                    <span class="page-width-option-icon">
+                      <span></span>
+                    </span>
+                    <span class="page-width-option-label">Balanced</span>
+                    <span class="page-width-option-val">860px</span>
+                  </button>
+                  <button
+                    class="page-width-option"
+                    type="button"
+                    data-page-width-option="980px"
+                    role="option"
+                  >
+                    <span class="page-width-option-icon">
+                      <span></span>
+                    </span>
+                    <span class="page-width-option-label">Wide</span>
+                    <span class="page-width-option-val">980px</span>
+                  </button>
+                </div>
+              </div>
               <button
                 class="icon-button status-icon-button"
                 type="button"
