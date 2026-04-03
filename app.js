@@ -104,6 +104,11 @@ const duplicateEntryButton = document.querySelector("[data-duplicate-entry]");
 const fontSelect = document.querySelector("[data-font-select]");
 const fontSizeSelect = document.querySelector("[data-font-size-select]");
 const pageWidthSelect = document.querySelector("[data-page-width-select]");
+const pageWidthDropdown = document.querySelector("[data-page-width-dropdown]");
+const pageWidthTrigger = document.querySelector("[data-page-width-trigger]");
+const pageWidthMenu = document.querySelector("[data-page-width-menu]");
+const pageWidthLabel = document.querySelector("[data-page-width-label]");
+const pageWidthOptions = document.querySelectorAll("[data-page-width-option]");
 const linkToolbarButton = document.querySelector("[data-link-toolbar]");
 const toggleChecklistButton = document.querySelector("[data-toggle-checklist]");
 const imageUploadTrigger = document.querySelector(
@@ -419,6 +424,45 @@ function bindEvents() {
     pulseStatus("Page width updated");
   });
 
+  // Custom page-width dropdown
+  if (pageWidthTrigger && pageWidthMenu) {
+    pageWidthTrigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = !pageWidthMenu.classList.contains("is-hidden");
+      pageWidthMenu.classList.toggle("is-hidden", isOpen);
+      pageWidthTrigger.setAttribute("aria-expanded", String(!isOpen));
+    });
+
+    pageWidthOptions.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const val = btn.dataset.pageWidthOption;
+        state.pageWidth = val;
+        applyEditorPreferences();
+        persistState();
+        pulseStatus("Page width updated");
+        pageWidthMenu.classList.add("is-hidden");
+        pageWidthTrigger.setAttribute("aria-expanded", "false");
+      });
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!pageWidthDropdown?.contains(e.target)) {
+        pageWidthMenu.classList.add("is-hidden");
+        pageWidthTrigger.setAttribute("aria-expanded", "false");
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (
+        e.key === "Escape" &&
+        !pageWidthMenu.classList.contains("is-hidden")
+      ) {
+        pageWidthMenu.classList.add("is-hidden");
+        pageWidthTrigger.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+
   fontSelect.addEventListener("wheel", (event) => {
     event.preventDefault();
     cycleSelectOption(fontSelect, event.deltaY);
@@ -434,14 +478,6 @@ function bindEvents() {
     applyFontSizeToSelection(fontSizeSelect.value);
     persistState();
     applyEditorPreferences();
-  });
-
-  pageWidthSelect?.addEventListener("wheel", (event) => {
-    event.preventDefault();
-    cycleSelectOption(pageWidthSelect, event.deltaY);
-    state.pageWidth = pageWidthSelect.value;
-    applyEditorPreferences();
-    persistState();
   });
 
   commandButtons.forEach((button) => {
@@ -591,7 +627,7 @@ function bindEvents() {
   });
 
   document.addEventListener("keydown", (event) => {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "n") {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "e") {
       event.preventDefault();
       createAndSelectEntry();
       return;
@@ -1279,6 +1315,23 @@ function applyEditorPreferences() {
       ? pageWidth
       : "860px";
   }
+  // Sync custom page-width dropdown
+  if (pageWidthLabel) {
+    const activeOpt = document.querySelector(
+      `[data-page-width-option="${pageWidth}"]`,
+    );
+    if (activeOpt) {
+      pageWidthLabel.textContent =
+        activeOpt.querySelector(".page-width-option-label")?.textContent ||
+        pageWidth;
+    }
+  }
+  pageWidthOptions.forEach((btn) => {
+    btn.classList.toggle(
+      "is-active",
+      btn.dataset.pageWidthOption === pageWidth,
+    );
+  });
 }
 
 function applySidebarWidth() {
@@ -1808,6 +1861,19 @@ function resetControlState() {
   fontSelect.value = state.fontKey || "crimson";
   fontSizeSelect.value = state.fontSize || "18px";
   if (pageWidthSelect) pageWidthSelect.value = state.pageWidth || "860px";
+  // Sync custom page-width dropdown
+  const pw = state.pageWidth || "860px";
+  pageWidthOptions.forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.pageWidthOption === pw);
+  });
+  if (pageWidthLabel) {
+    const activeOpt = document.querySelector(
+      `[data-page-width-option="${pw}"]`,
+    );
+    if (activeOpt)
+      pageWidthLabel.textContent =
+        activeOpt.querySelector(".page-width-option-label")?.textContent || pw;
+  }
 }
 
 function resolveFontKey(fontFamily) {
