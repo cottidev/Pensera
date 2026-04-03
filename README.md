@@ -43,8 +43,8 @@ Use the search bar at the top of the sidebar to find any entry by its title or c
 **Keyboard shortcuts**
 | Action | Shortcut |
 |---|---|
-| New entry | `Ctrl/Cmd + E` |
-| Duplicate entry | `Ctrl/Cmd + Shift + D` |
+| New entry |  `Ctrl/Cmd + E`  |
+| Duplicate entry |  `Ctrl/Cmd + Shift + D`  |
 
 **Backing up your journal**
 Click **Export** in the Groups panel to download all your entries as a `.json` file. To restore them on another device, click **Import** and select that file.
