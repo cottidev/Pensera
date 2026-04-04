@@ -898,8 +898,8 @@ body.is-resizing-sidebar .sidebar-resizer {
 
 .group-row:hover {
   border-color: color-mix(in srgb, var(--muted) 30%, var(--line));
-  box-shadow: 0 4px 16px rgba(17, 17, 17, 0.08);
-  background: color-mix(in srgb, var(--paper) 94%, var(--accent));
+  box-shadow: none;
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
 }
 
 .group-row.is-active {
@@ -1140,10 +1140,22 @@ body.is-resizing-sidebar .sidebar-resizer {
   background: var(--paper);
 }
 
+.entry-item.is-pinned.is-active {
+  border-color: color-mix(in srgb, var(--accent) 56%, var(--line));
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+}
+
 .entry-item:hover {
   border-color: color-mix(in srgb, var(--muted) 30%, var(--line));
-  box-shadow: 0 4px 16px rgba(17, 17, 17, 0.08);
-  background: color-mix(in srgb, var(--paper) 94%, var(--accent));
+  box-shadow: none;
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+}
+
+.entry-item.is-pinned:hover,
+.group-row.is-pinned:hover {
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--line));
+  box-shadow: none;
+  background: color-mix(in srgb, var(--accent) 12%, var(--paper));
 }
 
 .entry-item.is-entering {
@@ -1712,6 +1724,16 @@ body.is-resizing-sidebar .sidebar-resizer {
 
 .editor p {
   margin: 0 0 1em;
+}
+
+.editor ul,
+.editor ol {
+  margin: 0 0 1.1em;
+  padding-left: 1.45em;
+}
+
+.editor li {
+  margin: 0 0 0.5em;
 }
 
 .editor h1,
