@@ -627,7 +627,11 @@ function bindEvents() {
   });
 
   document.addEventListener("keydown", (event) => {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "e") {
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      event.altKey &&
+      event.key.toLowerCase() === "e"
+    ) {
       event.preventDefault();
       createAndSelectEntry();
       return;
@@ -2575,6 +2579,15 @@ function normalizeEditorMarkup(html) {
         }
       });
     }
+  });
+
+  container.querySelectorAll("ol, ul").forEach((list) => {
+    Array.from(list.children).forEach((child) => {
+      if (child.tagName === "LI") return;
+      const item = document.createElement("li");
+      item.innerHTML = child.innerHTML || child.textContent || "<br>";
+      child.replaceWith(item);
+    });
   });
 
   return container.innerHTML;
