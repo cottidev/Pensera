@@ -1,4 +1,4 @@
-const CACHE_NAME = "pensera-shell-v2";
+const CACHE_NAME = "pensera-shell-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -35,27 +35,39 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
+  const requestUrl = new URL(event.request.url);
+  const isSameOrigin = requestUrl.origin === self.location.origin;
+  const isNavigation = event.request.mode === "navigate";
+  const isAppShellAsset =
+    isSameOrigin &&
+    APP_SHELL.some((asset) => requestUrl.pathname.endsWith(asset.replace(/^\.\//, "/")));
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-
-      return fetch(event.request)
-        .then((response) => {
-          if (
-            !response ||
-            response.status !== 200 ||
-            response.type !== "basic"
-          ) {
-            return response;
-          }
-
+    fetch(event.request)
+      .then((response) => {
+        if (
+          response &&
+          response.status === 200 &&
+          (response.type === "basic" || response.type === "default") &&
+          (isSameOrigin || isNavigation)
+        ) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseClone);
           });
-          return response;
-        })
-        .catch(() => caches.match("./index.html"));
-    }),
+        }
+
+        return response;
+      })
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+
+        if (isNavigation) {
+          return caches.match("./index.html");
+        }
+
+        throw new Error("Network request failed");
+      }),
   );
 });
